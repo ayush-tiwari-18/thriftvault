@@ -83,7 +83,7 @@ function ConfirmationContent() {
         </p>
         <div className="flex gap-4 mt-6">
           <Link href="/OrderPage">
-            <Button variant="default">View Orders</Button>
+            <Button variant="outline">View Orders</Button>
           </Link>
           <Link href="/">
             <Button variant="outline">Return Home</Button>
@@ -109,14 +109,14 @@ function ConfirmationContent() {
       <div className="mt-8 w-full max-w-md rounded-lg border bg-card p-6 shadow-sm">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Package className="h-4 w-4" />
-          Order #{merchantOrderId?.toUpperCase()}
+          Order #{order?.id?.toUpperCase().slice(-8)}
         </div>
 
         {order && (
           <div className="mt-4 border-t pt-4">
             <div className="flex justify-between font-heading font-bold text-foreground text-lg">
               <span>Amount Paid</span>
-              <span>Rs. {(order.totalAmount / 100).toFixed(2)}</span>
+              <span>Rs. {(order.totalAmount).toFixed(2)}</span>
             </div>
             <p className="mt-1 text-xs font-medium text-emerald-600">
               ✓ Verified via PhonePe Gateway
