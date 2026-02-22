@@ -1,16 +1,18 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Store from '@/models/Store';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { storeId: string } }
+  request: NextRequest, // Recommended: Use NextRequest for consistency
+  { params }: { params: Promise<{ storeId: string }> } // FIXED: Define as Promise
 ) {
-  await dbConnect();
-  const { storeId } = await params; // Await params in Next.js 16
-
   try {
-    const storeData = await Store.findById(storeId).lean();
+    await dbConnect();
+
+    // Awaiting params works now because the type is defined as Promise
+    const { storeId } = await params; 
+
+    const storeData: any = await Store.findById(storeId).lean();
 
     if (!storeData) {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });
@@ -24,6 +26,7 @@ export async function GET(
 
     return NextResponse.json(store);
   } catch (error) {
+    console.error("Store fetch error:", error);
     return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
   }
 }
