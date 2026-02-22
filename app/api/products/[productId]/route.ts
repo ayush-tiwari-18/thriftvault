@@ -1,19 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Product from '@/models/Product';
 
+/**
+ * GET: Fetch a single product by its ID
+ * Next.js 15+ requires params to be treated as a Promise.
+ */
 export async function GET(
-  request: Request,
-  { params }: { params: { productId: string } }
+  request: NextRequest, // Changed from 'Request' for better Next.js type support
+  { params }: { params: Promise<{ productId: string }> } // FIXED: Defined as Promise
 ) {
-  await dbConnect();
-
-  // In Next.js 16, params must be awaited to access its properties
-  const { productId } = await params;
-
   try {
-    // .lean() returns a plain JavaScript object for better performance
-    const productData = await Product.findById(productId).lean();
+    await dbConnect();
+
+    // FIXED: Awaiting the params promise before destructuring
+    const { productId } = await params;
+
+    // Use .lean() to get a plain JS object (better for serialization)
+    const productData: any = await Product.findById(productId).lean();
 
     if (!productData) {
       return NextResponse.json(
@@ -22,16 +26,19 @@ export async function GET(
       );
     }
 
-    // Map _id to id so the frontend component can use product.id
+    // Prepare the object for the frontend
     const product = {
       ...productData,
       id: productData._id.toString(),
-      storeId: productData.storeId.toString(), // Ensure storeId is also a string
+      // Check if storeId exists before calling toString to avoid crashes
+      storeId: productData.storeId?.toString() || "", 
     };
 
     return NextResponse.json(product);
   } catch (error) {
     console.error("Fetch product error:", error);
+    
+    // Likely a Mongoose "CastError" if the ID format is wrong
     return NextResponse.json(
       { error: "Invalid Product ID format" }, 
       { status: 400 }
