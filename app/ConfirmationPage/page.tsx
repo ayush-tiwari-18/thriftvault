@@ -2,41 +2,42 @@
 
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState, Suspense } from "react"; // Added Suspense
-import { CheckCircle, Package, Loader2 } from "lucide-react";
+import { useEffect, useState, Suspense } from "react";
+import { CheckCircle, Package, Loader2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Order } from "@/types";
 import { useCart } from "@/context/CartContext";
 
-// 1. Separate the logic into a child component
 function ConfirmationContent() {
   const searchParams = useSearchParams();
   const { clearCart } = useCart();
   
-  const sessionId = searchParams.get("session_id");
+  // PhonePe uses merchantOrderId passed in your initiate route
+  const merchantOrderId = searchParams.get("orderId");
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "success" | "pending" | "error">("loading");
 
   useEffect(() => {
     async function verifyAndFetchOrder() {
-      if (!sessionId) {
+      if (!merchantOrderId) {
         setStatus("error");
         return;
       }
 
       try {
-        const response = await fetch(`/api/checkout/confirm?session_id=${sessionId}`);
+        // Call your new status API
+        const response = await fetch(`/api/payment/status?merchantOrderId=${merchantOrderId}`);
         const data = await response.json();
         
-        if (response.ok && data.order) {
-          setOrder({
-            ...data.order,
-            id: data.order._id?.toString() || data.order.id
-          });
-          
+        // Trust root-level 'state' per PhonePe docs
+        if (data.state === "COMPLETED") {
+          setOrder(data); // data contains orderDetails from the Status API
           clearCart();
           setStatus("success");
+        } else if (data.state === "PENDING") {
+          // Case where webhook hasn't hit yet
+          setStatus("pending");
         } else {
           setStatus("error");
         }
@@ -47,30 +48,52 @@ function ConfirmationContent() {
     }
 
     verifyAndFetchOrder();
-  }, [sessionId, clearCart]);
+  }, [merchantOrderId, clearCart]);
 
+  // UI STATE: LOADING
   if (status === "loading") {
     return (
       <div className="container-page flex min-h-[60vh] flex-col items-center justify-center gap-3">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse font-medium">Verifying payment with Stripe...</p>
+        <p className="text-muted-foreground animate-pulse font-medium">Verifying your payment with PhonePe...</p>
       </div>
     );
   }
 
-  if (status === "error" || !order) {
+  // UI STATE: PENDING (Webhook delay)
+  if (status === "pending") {
+    return (
+      <div className="container-page flex min-h-[60vh] flex-col items-center justify-center text-center gap-4">
+        <Clock className="h-16 w-16 text-yellow-500 animate-pulse" />
+        <h1 className="text-2xl font-bold">Payment is Processing</h1>
+        <p className="text-muted-foreground max-w-xs">
+          PhonePe is confirming your transaction. This usually takes a few seconds.
+        </p>
+        <Button onClick={() => window.location.reload()}>Refresh Status</Button>
+      </div>
+    );
+  }
+
+  // UI STATE: ERROR
+  if (status === "error") {
     return (
       <div className="container-page flex min-h-[50vh] flex-col items-center justify-center animate-fade-in">
         <p className="text-muted-foreground text-center max-w-xs">
-          We couldn't verify your payment session. Please check your email or order history.
+          We couldn't verify your order. If you've paid, please check your "My Orders" section in a few minutes.
         </p>
-        <Link href="/">
-          <Button className="mt-6" variant="outline">Return Home</Button>
-        </Link>
+        <div className="flex gap-4 mt-6">
+          <Link href="/OrderPage">
+            <Button variant="default">View Orders</Button>
+          </Link>
+          <Link href="/">
+            <Button variant="outline">Return Home</Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
+  // UI STATE: SUCCESS
   return (
     <div className="container-page flex min-h-[60vh] flex-col items-center justify-center animate-fade-in py-12">
       <CheckCircle className="h-16 w-16 text-primary" />
@@ -80,57 +103,37 @@ function ConfirmationContent() {
       </h1>
 
       <p className="mt-2 text-muted-foreground">
-        Thank you for your purchase, {order.customerName}.
+        Your ThriftVault find is secured!
       </p>
 
       <div className="mt-8 w-full max-w-md rounded-lg border bg-card p-6 shadow-sm">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Package className="h-4 w-4" />
-          Order #{order.id.slice(-8).toUpperCase()}
+          Order #{merchantOrderId?.toUpperCase()}
         </div>
 
-        <p className="mt-2 text-sm text-muted-foreground">
-          Store: <strong className="text-foreground">{order.storeName}</strong>
-        </p>
-
-        <div className="mt-4 space-y-2 border-t pt-4">
-          {order.items?.map((item: any, idx: number) => (
-            <div key={idx} className="flex justify-between text-sm">
-              <span className="text-foreground">
-                {item.product.name} (x{item.quantity})
-              </span>
-              <span className="text-foreground">
-                ${(item.product.price * item.quantity).toFixed(2)}
-              </span>
+        {order && (
+          <div className="mt-4 border-t pt-4">
+            <div className="flex justify-between font-heading font-bold text-foreground text-lg">
+              <span>Amount Paid</span>
+              <span>Rs. {(order.totalAmount / 100).toFixed(2)}</span>
             </div>
-          ))}
-        </div>
-
-        <div className="mt-4 border-t pt-4">
-          <div className="flex justify-between font-heading font-bold text-foreground text-lg">
-            <span>Total Paid</span>
-            <span>${order.totalAmount.toFixed(2)}</span>
+            <p className="mt-1 text-xs font-medium text-emerald-600">
+              ✓ Verified via PhonePe Gateway
+            </p>
           </div>
-          <p className="mt-1 text-xs font-medium text-emerald-600">
-            ✓ Payment received via Stripe
-          </p>
-        </div>
-
-        <p className="mt-4 text-xs text-muted-foreground border-t pt-4">
-          A receipt has been sent to {order.customerEmail}.
-        </p>
+        )}
       </div>
 
-      <Link href="/">
+      <Link href="/OrderPage">
         <Button className="mt-8 bg-primary text-primary-foreground hover:bg-primary/90 px-8">
-          Continue Shopping
+          View My Orders
         </Button>
       </Link>
     </div>
   );
 }
 
-// 2. Wrap the dynamic content in Suspense for Vercel builds
 export default function ConfirmationPage() {
   return (
     <Suspense fallback={

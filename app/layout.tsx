@@ -7,9 +7,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/context/CartContext";
 import Header from "@/components/Header";
 import StoreConflictModal from "@/components/StoreConflictModal";
+import Script from "next/script"; // Import the Script component
 import "./globals.css";
 
-// 1. Keep fonts at the top
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -21,8 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "My Next.js App",
-  description: "MERN migration to Next.js",
+  title: "ThriftVault | Pre-Loved Fashion",
+  description: "Curated vintage finds from local thrift stores.",
 };
 
 export default function RootLayout({
@@ -34,15 +34,20 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          {/* 2. All providers and UI components must be INSIDE the body */}
+          {/* PhonePe Checkout SDK - Required for the IFrame and transact function */}
+          <Script 
+            src="https://mercury.phonepe.com/web/bundle/checkout.js" 
+            strategy="beforeInteractive" // Ensures SDK is ready for CheckoutPage
+          />
+
           <TooltipProvider>
             <CartProvider>
               <Header />
-              <main>{children}</main>
+              <main className="min-h-screen">{children}</main>
               
               {/* UI Overlay Components */}
               <Toaster />
-              <Sonner />
+              <Sonner position="top-center" richColors />
               <StoreConflictModal />
             </CartProvider>
           </TooltipProvider>
