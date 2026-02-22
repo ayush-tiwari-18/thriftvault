@@ -42,6 +42,17 @@ export async function GET(req: NextRequest) {
       await existingOrder.save();
     }
 
+    if (phonepeData.state === "FAILED" && existingOrder.status !== "failed") {
+      existingOrder.status = "failed";
+      await existingOrder.save();
+    }
+
+    if ((phonepeData.state === "USER_CANCEL" || phonepeData.state === "CANCELLED") && existingOrder.status !== "cancelled") {
+      existingOrder.status = "cancelled";
+      await existingOrder.save();
+    }
+
+
     // 4. Return COMBINED data so the ConfirmationPage has everything it needs
     return NextResponse.json({
       ...phonepeData, // Contains 'state': 'COMPLETED'

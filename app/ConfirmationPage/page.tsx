@@ -83,10 +83,10 @@ function ConfirmationContent() {
         </p>
         <div className="flex gap-4 mt-6">
           <Link href="/OrderPage">
-            <Button variant="outline">View Orders</Button>
+            <Button variant="default">View Orders</Button>
           </Link>
           <Link href="/">
-            <Button variant="outline">Return Home</Button>
+            <Button variant="default">Return Home</Button>
           </Link>
         </div>
       </div>
