@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const authHeader = req.headers.get('Authorization');
 
-    // 1. Verify Webhook security using credentials from your Dashboard
+    // 1. Verify Webhook security
     const expectedAuth = crypto
       .createHash('sha256')
       .update(`${process.env.PHONEPE_WEBHOOK_USER}:${process.env.PHONEPE_WEBHOOK_PASS}`)
@@ -19,22 +19,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Extract payload and check state
+    // 2. Extract payload and event
     const { event, payload } = body;
     
-    // We look for the COMPLETED state
-    if (event === 'checkout.order.completed' && payload.state === 'COMPLETED') {
+    // Only process checkout completion events
+    if (event === 'checkout.order.completed') {
       await dbConnect();
-      
-      // Update the order status in MongoDB
+
+      // Map PhonePe states to your Order statuses
+      let newStatus: 'paid' | 'failed' | 'cancelled' | 'pending' = 'pending';
+
+      switch (payload.state) {
+        case 'COMPLETED':
+          newStatus = 'paid';
+          break;
+        case 'FAILED':
+          newStatus = 'failed';
+          break;
+        case 'USER_CANCEL':
+        case 'CANCELLED':
+          newStatus = 'cancelled';
+          break;
+        default:
+          newStatus = 'pending';
+      }
+
+      // Update the order in MongoDB using the unique merchantOrderId
       const updatedOrder = await Order.findOneAndUpdate(
         { merchantOrderId: payload.merchantOrderId },
-        { status: 'paid' },
+        { 
+          status: newStatus,
+          // Store PhonePe's internal ID if it's provided in the payload
+          paymentIntentId: payload.transactionId || payload.orderId 
+        },
         { new: true }
       );
 
       if (!updatedOrder) {
-        console.error(`Order ${payload.merchantOrderId} not found in DB`);
+        console.warn(`Webhook received for unknown Order: ${payload.merchantOrderId}`);
       }
     }
 
@@ -42,6 +64,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ status: "OK" });
   } catch (error) {
     console.error("Webhook Processing Error:", error);
+    // Returning 200 even on error can be a strategy to stop retries if the payload is malformed
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 }
