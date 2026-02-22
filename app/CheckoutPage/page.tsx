@@ -11,8 +11,10 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { CheckoutFormData } from '@/types';
 import Script from 'next/script'; // Import Next.js Script for SDK loading
+import { useAuth } from '@clerk/nextjs';
 
 export default function CheckoutPage() {
+  const { userId } = useAuth(); // Get the authenticated userId
   const router = useRouter();
   const { cart, getTotal, getItemCount } = useCart(); 
   
@@ -54,9 +56,12 @@ export default function CheckoutPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId: userId, // CRITICAL: Add this line
           amount: getTotal(),
           merchantOrderId: merchantOrderId,
-          customerDetails: form, // Used for internal record keeping
+          customerDetails: form,
+          items: cart.items, // Ensure you send items for the DB record
+          storeName: cart.storeName,
         }),
       });
 

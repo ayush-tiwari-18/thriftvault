@@ -3,28 +3,55 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAccessToken } from '@/lib/phonepe';
 import dbConnect from '@/lib/db';
 import Order from '@/models/Order';
+import Product from '@/models/Product'; // Import your Product model
 
 export async function POST(req: NextRequest) {
   try {
-    const { amount, merchantOrderId, customerDetails, items, storeName } = await req.json();
+    const { userId, merchantOrderId, customerDetails, items, storeName } = await req.json();
 
     await dbConnect();
 
-    // 1. Combine Address fields for your database
+    // 1. SECURE AMOUNT CALCULATION
+    let totalAmount = 0;
+    const validatedItems = [];
+
+    for (const item of items) {
+      // Find the product in DB to get the REAL price
+      const dbProduct = await Product.findById(item.product._id || item.product.id);
+      
+      if (!dbProduct) {
+        throw new Error(`Product ${item.product.name} not found.`);
+      }
+
+      const itemSubtotal = dbProduct.price * item.quantity;
+      totalAmount += itemSubtotal;
+
+      // Re-construct the item object with DB-verified data
+      validatedItems.push({
+        product: {
+          id: dbProduct._id.toString(),
+          name: dbProduct.name,
+          price: dbProduct.price, // Using DB price, not frontend price
+        },
+        quantity: item.quantity
+      });
+    }
+
+    // 2. Combine Address fields
     const { address, city, state, zipCode } = customerDetails;
     const fullAddress = `${address}, ${city}, ${state} - ${zipCode}`;
 
-    // 2. Generate PhonePe Token
+    // 3. Generate PhonePe Token
     const token = await getAccessToken();
 
-    // 3. Prepare PhonePe API Call
+    // 4. Prepare PhonePe API Call using verified totalAmount
     const payUrl = process.env.PHONEPE_ENV === 'production'
       ? 'https://api.phonepe.com/apis/pg/checkout/v2/pay'
       : 'https://api-preprod.phonepe.com/apis/pg-sandbox/checkout/v2/pay';
 
     const payload = {
       merchantOrderId,
-      amount: amount * 100, // Amount in paisa
+      amount: Math.round(totalAmount * 100), // Securely calculated paisa
       paymentFlow: {
         type: "PG_CHECKOUT",
         merchantUrls: {
@@ -46,18 +73,18 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) throw new Error(data.message || "PhonePe Initiation Failed");
 
-    // 4. Create the Order in MongoDB
-    // We store PhonePe's orderId (Transaction ID) in paymentIntentId
+    // 5. Create the Order in MongoDB
     await Order.create({
-      merchantOrderId: merchantOrderId, 
-      paymentIntentId: data.orderId, // PhonePe's Transaction ID stored here
+      userId,
+      merchantOrderId, 
+      paymentIntentId: data.orderId, 
       customerName: customerDetails.fullName,
       customerEmail: customerDetails.email,
       customerPhone: customerDetails.phone,
       shippingAddress: fullAddress,
-      items,
+      items: validatedItems, // Store the verified items
       storeName,
-      totalAmount: amount,
+      totalAmount: totalAmount, // Store the verified total
       status: 'pending',
     });
 
