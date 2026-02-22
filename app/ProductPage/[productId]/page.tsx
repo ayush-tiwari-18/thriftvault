@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react"; // Added 'use' from React
 import { ArrowLeft, ShoppingBag, Check, Loader2 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { Product, Store } from "@/types";
 
 export default function ProductPage() {
+  // 1. In Next.js 15+, useParams() returns a plain object but 
+  // to be safe across all rendering modes, we treat it carefully.
   const params = useParams();
   const productId = params?.productId as string;
 
@@ -22,20 +24,20 @@ export default function ProductPage() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [added, setAdded] = useState(false);
 
-  // Fetch Product and its associated Store from MongoDB
   useEffect(() => {
     async function fetchProductDetails() {
       if (!productId) return;
+      
       setIsLoading(true);
       try {
-        // 1. Fetch the specific product
+        // Fetch the product
         const productRes = await fetch(`/api/products/${productId}`);
         const productData = await productRes.json();
 
         if (productData.error) throw new Error(productData.error);
         setProduct(productData);
 
-        // 2. Fetch the store that owns this product
+        // Fetch the store
         const storeRes = await fetch(`/api/stores/${productData.storeId}`);
         const storeData = await storeRes.json();
 
@@ -92,14 +94,15 @@ export default function ProductPage() {
         {/* Images Section */}
         <div className="space-y-4">
           <div className="aspect-[3/4] overflow-hidden rounded-xl bg-muted border">
+            {/* Added fallback for images array */}
             <img
-              src={product.images[selectedImage]}
+              src={product.images?.[selectedImage] || "/placeholder.png"}
               alt={product.name}
               className="h-full w-full object-cover transition-opacity duration-300"
             />
           </div>
 
-          {product.images.length > 1 && (
+          {product.images?.length > 1 && (
             <div className="flex flex-wrap gap-3">
               {product.images.map((img, i) => (
                 <button
@@ -169,7 +172,7 @@ export default function ProductPage() {
             <Button
               onClick={handleAddToCart}
               className="w-full h-14 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
-              disabled={product.quantity < 1}
+              disabled={(product.quantity ?? 0) < 1}
             >
               {added ? (
                 <>
@@ -184,7 +187,7 @@ export default function ProductPage() {
               )}
             </Button>
 
-            {product.quantity < 1 && (
+            {(product.quantity ?? 0) < 1 && (
               <p className="mt-3 text-center text-sm font-medium text-destructive">
                 This item is currently out of stock.
               </p>

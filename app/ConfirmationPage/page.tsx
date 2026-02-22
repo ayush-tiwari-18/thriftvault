@@ -2,17 +2,17 @@
 
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react"; // Added Suspense
 import { CheckCircle, Package, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Order } from "@/types";
 import { useCart } from "@/context/CartContext";
 
-export default function ConfirmationPage() {
+// 1. Separate the logic into a child component
+function ConfirmationContent() {
   const searchParams = useSearchParams();
   const { clearCart } = useCart();
   
-  // Stripe provides 'session_id' in the return_url
   const sessionId = searchParams.get("session_id");
 
   const [order, setOrder] = useState<Order | null>(null);
@@ -26,7 +26,6 @@ export default function ConfirmationPage() {
       }
 
       try {
-        // 1. Verify session and create/fetch the order on the backend
         const response = await fetch(`/api/checkout/confirm?session_id=${sessionId}`);
         const data = await response.json();
         
@@ -36,7 +35,6 @@ export default function ConfirmationPage() {
             id: data.order._id?.toString() || data.order.id
           });
           
-          // 2. Clear the local cart now that payment is confirmed
           clearCart();
           setStatus("success");
         } else {
@@ -51,7 +49,6 @@ export default function ConfirmationPage() {
     verifyAndFetchOrder();
   }, [sessionId, clearCart]);
 
-  // UI STATE: LOADING
   if (status === "loading") {
     return (
       <div className="container-page flex min-h-[60vh] flex-col items-center justify-center gap-3">
@@ -61,7 +58,6 @@ export default function ConfirmationPage() {
     );
   }
 
-  // UI STATE: ERROR
   if (status === "error" || !order) {
     return (
       <div className="container-page flex min-h-[50vh] flex-col items-center justify-center animate-fade-in">
@@ -75,7 +71,6 @@ export default function ConfirmationPage() {
     );
   }
 
-  // UI STATE: YOUR EXACT UI STRUCTURE
   return (
     <div className="container-page flex min-h-[60vh] flex-col items-center justify-center animate-fade-in py-12">
       <CheckCircle className="h-16 w-16 text-primary" />
@@ -98,7 +93,6 @@ export default function ConfirmationPage() {
           Store: <strong className="text-foreground">{order.storeName}</strong>
         </p>
 
-        {/* Item List */}
         <div className="mt-4 space-y-2 border-t pt-4">
           {order.items?.map((item: any, idx: number) => (
             <div key={idx} className="flex justify-between text-sm">
@@ -112,7 +106,6 @@ export default function ConfirmationPage() {
           ))}
         </div>
 
-        {/* Total Summary */}
         <div className="mt-4 border-t pt-4">
           <div className="flex justify-between font-heading font-bold text-foreground text-lg">
             <span>Total Paid</span>
@@ -134,5 +127,18 @@ export default function ConfirmationPage() {
         </Button>
       </Link>
     </div>
+  );
+}
+
+// 2. Wrap the dynamic content in Suspense for Vercel builds
+export default function ConfirmationPage() {
+  return (
+    <Suspense fallback={
+      <div className="container-page flex min-h-[60vh] flex-col items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    }>
+      <ConfirmationContent />
+    </Suspense>
   );
 }

@@ -19,6 +19,8 @@ const categories = ["All", "Tops", "Bottoms", "Dresses", "Outerwear", "Accessori
 const genders = ["All", "Men", "Women", "Unisex"] as const;
 
 export default function StorePage() {
+  // 1. Params is treated as a plain object by the hook, but Vercel requires
+  // it to be handled carefully during static generation.
   const params = useParams();
   const storeId = params?.storeId as string;
 
@@ -30,22 +32,30 @@ export default function StorePage() {
   const [gender, setGender] = useState<string>("All");
   const [sort, setSort] = useState<string>("newest");
 
-  // Fetch Store and Products from MongoDB
   useEffect(() => {
     async function fetchData() {
+      // 2. Ensure storeId exists before making API calls
       if (!storeId) return;
+      
       setIsLoading(true);
       try {
-        // Fetch Store Details
         const storeRes = await fetch(`/api/stores/${storeId}`);
         const storeData = await storeRes.json();
         
-        // Fetch Products for this Store
+        // Use the query parameter correctly for your filtered API
         const productsRes = await fetch(`/api/products?storeId=${storeId}`);
         const productsData = await productsRes.json();
 
         if (!storeData.error) setStore(storeData);
-        if (!productsData.error) setAllProducts(productsData);
+        
+        // 3. Ensure we map MongoDB IDs correctly if the API didn't already
+        if (!productsData.error) {
+          const formatted = productsData.map((p: any) => ({
+            ...p,
+            id: p._id?.toString() || p.id
+          }));
+          setAllProducts(formatted);
+        }
       } catch (err) {
         console.error("Failed to load store data:", err);
       } finally {
@@ -96,10 +106,9 @@ export default function StorePage() {
 
   return (
     <div className="animate-fade-in">
-      {/* Store Banner */}
       <div className="relative h-56 overflow-hidden">
         <img
-          src={store.bannerImage}
+          src={store.bannerImage || "/placeholder-banner.png"}
           alt={store.name}
           className="h-full w-full object-cover"
         />
@@ -120,7 +129,6 @@ export default function StorePage() {
       <div className="container-page py-8">
         <p className="mb-6 text-muted-foreground max-w-2xl">{store.description}</p>
 
-        {/* Filters */}
         <div className="mb-8 flex flex-wrap items-center gap-3">
           <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
           <div className="flex flex-wrap gap-2">
@@ -161,7 +169,6 @@ export default function StorePage() {
           </div>
         </div>
 
-        {/* Products Grid */}
         {filtered.length === 0 ? (
           <p className="py-12 text-center text-muted-foreground">No items match your filters.</p>
         ) : (
