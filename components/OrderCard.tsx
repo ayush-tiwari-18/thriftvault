@@ -16,6 +16,8 @@ import {
   Store,
   ChevronDown,
   ChevronUp,
+  XCircle, // Added for failed/cancelled states
+  AlertCircle
 } from "lucide-react";
 import { Order } from "@/types";
 import { Badge } from "@/components/ui/badge";
@@ -43,10 +45,21 @@ const getStatusDetails = (status: Order["status"]) => {
         color: "bg-emerald-500/10 text-emerald-600",
         icon: <Package className="h-4 w-4" />,
       };
-    default:
+    case "failed":
+    case "cancelled":
+      return {
+        color: "bg-red-500/10 text-red-600",
+        icon: <XCircle className="h-4 w-4" />,
+      };
+    case "pending":
       return {
         color: "bg-amber-500/10 text-amber-600",
         icon: <Clock className="h-4 w-4" />,
+      };
+    default:
+      return {
+        color: "bg-slate-500/10 text-slate-600",
+        icon: <AlertCircle className="h-4 w-4" />,
       };
   }
 };
@@ -194,13 +207,23 @@ export default function OrderCard({ order }: OrderCardProps) {
 
               {/* Financial Summary */}
               <div className="mt-6 space-y-3 bg-muted/20 p-4 rounded-lg border border-muted">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <CreditCard className="h-3.5 w-3.5" /> Stripe Reference:
-                  </span>
-                  <span className="font-mono text-muted-foreground select-all">
-                    {order.paymentIntentId}
-                  </span>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Hash className="h-3.5 w-3.5" /> MerchantOrderId:
+                    </span>
+                    <span className="font-mono text-muted-foreground select-all">
+                      {order.merchantOrderId}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <CreditCard className="h-3.5 w-3.5" /> PhonePe TransactionId:
+                    </span>
+                    <span className="font-mono text-muted-foreground select-all">
+                      {order.paymentIntentId || "Not generated"}
+                    </span>
+                  </div>
                 </div>
 
                 <Separator />

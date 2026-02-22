@@ -14,6 +14,7 @@ const OrderSchema = new Schema(
     totalAmount: { type: Number, default: 0 },
     paymentIntentId: { type: String, default: "" },
     status: { type: String, default: "pending" },
+    merchantOrderId: {type: String, default: ""}
   },
   { timestamps: true },
 );

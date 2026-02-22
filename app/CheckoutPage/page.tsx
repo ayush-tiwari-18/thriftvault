@@ -49,7 +49,7 @@ export default function CheckoutPage() {
 
     try {
       // 1. Initiate PhonePe Payment on the backend
-      const merchantOrderId = `TV_${Date.now()}`;
+      const merchantOrderId = `TV_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       const response = await fetch('/api/payment/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

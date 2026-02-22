@@ -81,7 +81,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           : item)
       : [...cart.items, { product, quantity: 1 }];
 
-    const newCart = { ...cart, storeId: product.storeId, items: newItems };
+    const newCart = { ...cart, storeId: product.storeId, storeName: product.storeName, items: newItems };
     setCart(newCart);
     persistCart(newCart);
     return true;
@@ -90,7 +90,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const forceAddToCart = useCallback((product: Product) => {
     const newCart = {
       storeId: product.storeId,
-      storeName: '', 
+      storeName: product.storeName, 
       items: [{ product, quantity: 1 }],
     };
     setCart(newCart);

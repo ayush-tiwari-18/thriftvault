@@ -11,8 +11,9 @@ export interface Store {
 
 export interface Product {
   id: string;
-  _id? : string
-  storeId: string;
+  _id?: string;
+  storeId: string; // Required for cart logic
+  storeName: string;
   name: string;
   description: string;
   price: number;
@@ -39,6 +40,7 @@ export interface Cart {
 
 export interface Order {
   id: string;
+  _id?: string; // Standardize with Store and Product
   storeId: string;
   storeName: string;
   userId: string;
@@ -47,8 +49,11 @@ export interface Order {
   customerPhone: string;
   shippingAddress: string;
   totalAmount: number;
-  paymentIntentId: string;
-  status: 'pending' | 'paid' | 'shipped' | 'delivered';
+  // Use paymentIntentId for PhonePe's ID and merchantOrderId for yours
+  paymentIntentId: string; 
+  merchantOrderId: string;
+  // Added 'failed' and 'cancelled' to handle PhonePe webhook responses
+  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'failed' | 'cancelled';
   items: CartItem[];
   createdAt: string;
 }

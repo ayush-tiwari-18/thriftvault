@@ -41,7 +41,7 @@ export default function CartPage() {
                   <p className="text-sm text-muted-foreground">Size: {product.size} · {product.condition}</p>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="font-heading text-lg font-bold text-foreground">${product.price * quantity}</span>
+                  <span className="font-heading text-lg font-bold text-foreground">Rs.{product.price * quantity}</span>
                   <button onClick={() => removeFromCart(product.id)} className="text-muted-foreground transition-colors hover:text-destructive">
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -56,7 +56,7 @@ export default function CartPage() {
           <div className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>Subtotal ({getItemCount()} items)</span>
-              <span>${getTotal()}</span>
+              <span>Rs.{getTotal()}</span>
             </div>
             <div className="flex justify-between text-muted-foreground">
               <span>Shipping</span>
@@ -66,7 +66,7 @@ export default function CartPage() {
           <div className="mt-4 border-t pt-4">
             <div className="flex justify-between font-heading text-lg font-bold text-foreground">
               <span>Total</span>
-              <span>${getTotal()}</span>
+              <span>Rs.{getTotal()}</span>
             </div>
           </div>
           <Link href="/CheckoutPage">
