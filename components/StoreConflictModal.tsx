@@ -17,7 +17,7 @@ export default function StoreConflictModal() {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setConflictProduct(null)}>Keep Current Cart</AlertDialogCancel>
+          <AlertDialogCancel onClick={() => setConflictProduct(null)} className="bg-accent text-accent-foreground hover:bg-accent/90">Keep Current Cart</AlertDialogCancel>
           <AlertDialogAction onClick={() => forceAddToCart(conflictProduct)} className="bg-accent text-accent-foreground hover:bg-accent/90">
             Clear Cart & Add Item
           </AlertDialogAction>
