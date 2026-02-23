@@ -15,7 +15,7 @@ export default function StoreCard({ store }: StoreCardProps) {
     >
       <div className="relative h-48 overflow-hidden">
         <img
-          src={store.bannerImage}
+          src={store?.logoImage || "https://images.pexels.com/photos/5632325/pexels-photo-5632325.jpeg"}
           alt={store.name}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
