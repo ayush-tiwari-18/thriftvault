@@ -723,7 +723,7 @@ export default function VendorDashboard() {
                   type="file"
                   className="hidden"
                   accept="image/*"
-                  onChange={handleFileUpload}
+                  onChange={handleFileUploadBanner}
                 />
               </div>
               {newProduct.image ? "Image Added" : ""}
