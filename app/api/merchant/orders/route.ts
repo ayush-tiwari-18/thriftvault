@@ -20,7 +20,7 @@ export async function GET() {
     if (!vendor) {
       return NextResponse.json({ error: "Store not found for this user" }, { status: 404 });
     }
-    const ordersData = await Order.find({ storeId: vendor.storeId, status:"paid" }).sort({ createdAt: -1 }).lean();
+    const ordersData = await Order.find({ storeId: vendor.storeId, status: { $in: ["paid", "shipped", "delivered"] }}).sort({ createdAt: -1 }).lean();
 
     // If no orders are found, 'ordersData' will be an empty array [].
     // We return this with a 200 status so the frontend can show "No orders yet".
