@@ -132,6 +132,7 @@ export default function VendorDashboard() {
         body: JSON.stringify({
           ...newProduct,
           storeId: store?._id,
+          storeName: store?.name,
           price: Number(newProduct.price),
         }),
       });

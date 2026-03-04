@@ -7,7 +7,7 @@ import Product from '@/models/Product'; // Import your Product model
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, merchantOrderId, customerDetails, items, storeName } = await req.json();
+    const { userId, merchantOrderId, customerDetails, items, storeName, storeId } = await req.json();
 
     await dbConnect();
 
@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
       shippingAddress: fullAddress,
       items: validatedItems, // Store the verified items
       storeName,
+      storeId,
       totalAmount: totalAmount, // Store the verified total
       status: 'pending',
     });

@@ -61,6 +61,7 @@ export default function CheckoutPage() {
           merchantOrderId: merchantOrderId,
           customerDetails: form,
           items: cart.items, // Ensure you send items for the DB record
+          storeId: cart.storeId,
           storeName: cart.storeName,
         }),
       });
