@@ -108,7 +108,7 @@ export default function StorePage() {
     <div className="animate-fade-in">
       <div className="relative h-56 overflow-hidden">
         <img
-          src={store.bannerImage || "/placeholder-banner.png"}
+          src={store.bannerImage || "https://static.vecteezy.com/system/resources/thumbnails/049/033/798/small/3d-black-geometric-abstract-background-overlap-layer-on-dark-space-with-waves-lines-decoration-minimalist-modern-graphic-design-element-cutout-style-concept-for-banner-flyer-card-or-brochure-cover-vector.jpg"}
           alt={store.name}
           className="h-full w-full object-cover"
         />

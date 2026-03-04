@@ -5,6 +5,7 @@ import StoreCard from '@/components/StoreCard';
 import heroBanner from '@/assets/hero-banner.jpg';
 import Image from 'next/image';
 import { Store } from '@/types';
+import Header from '@/components/Header';
 
 const Index = () => {
   const [stores, setStores] = useState<Store[]>([]);
@@ -36,6 +37,7 @@ const Index = () => {
 
   return (
     <div className="animate-fade-in">
+      <Header/>
       {/* Hero Section */}
       <section className="relative h-[60vh] min-h-[400px] overflow-hidden">
         <Image 

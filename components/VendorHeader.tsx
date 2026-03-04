@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
-import { ShoppingBag, Store , Truck, CircleDollarSignIcon} from "lucide-react";
+import { ShoppingBag, Store , Truck, Home} from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { Badge } from "@/components/ui/badge";
 import { UserButton, SignUpButton, SignInButton, SignedIn , SignedOut} from "@clerk/nextjs";
 import { Button } from "./ui/button";
 
-export default function Header() {
+export default function VendorHeader() {
   const { getItemCount } = useCart();
   const count = getItemCount();
 
@@ -28,31 +28,26 @@ export default function Header() {
         <SignedIn>
           <UserButton/>
           <Link
-          href="/OrderPage"
+          href="/Vendor/VendorOrders"
           className="relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
         >
           <Truck className="h-5 w-5" />
-          <span className="hidden sm:inline">Orders</span>
+          <span className="hidden sm:inline">Orders Recieved</span>
         </Link>
           <Link
-          href="/Vendor/VendorPage"
+          href="/"
           className="relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
         >
-          <CircleDollarSignIcon className="h-5 w-5" />
-          <span className="hidden sm:inline">Vendor</span>
+          <Home className="h-5 w-5" />
+          <span className="hidden sm:inline">Home</span>
         </Link>
         </SignedIn>
         <Link
-          href="/CartPage"
+          href="/Vendor/VendorPage"
           className="relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
         >
           <ShoppingBag className="h-5 w-5" />
-          <span className="hidden sm:inline">Cart</span>
-          {count > 0 && (
-            <Badge className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-accent p-0 text-[10px] text-accent-foreground">
-              {count}
-            </Badge>
-          )}
+          <span className="hidden sm:inline">Products</span>
         </Link>
         </div>
       </div>

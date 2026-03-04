@@ -203,7 +203,7 @@ export default function CheckoutPage() {
               {loading ? (
                 <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Preparing...</>
               ) : (
-                <><Lock className="mr-2 h-5 w-5" /> Pay Now with PhonePe</>
+                <><Lock className="mr-2 h-5 w-5" /> Pay Now</>
               )}
             </Button>
             <p className="text-[10px] text-center text-muted-foreground mt-4 uppercase tracking-widest font-bold">
