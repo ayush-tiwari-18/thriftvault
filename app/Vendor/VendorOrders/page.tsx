@@ -86,7 +86,7 @@ export default function OrderPage() {
           Access to order history is reserved for approved partners. Apply to join our curated marketplace.
         </p>
         <Link
-          href="https://forms.gle/..."
+          href="https://docs.google.com/forms/d/e/1FAIpQLSd1r4NwRdpISJkSTpxBq0OfObDEe0E5oq7bdAz8Z6sxIPTWfA/viewform?usp=dialog"
           target="_blank"
           style={{ backgroundColor: "#16a34a" }}
           className="mt-8 text-white px-8 py-3 rounded-md flex items-center gap-2 transition-all hover:opacity-90"

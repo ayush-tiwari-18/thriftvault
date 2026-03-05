@@ -266,7 +266,7 @@ export default function VendorDashboard() {
         <StoreIcon className="h-12 w-12 text-primary mb-4" />
         <h1 className="text-3xl font-bold">Become a Partner</h1>
         <Link
-          href="https://forms.gle/..."
+          href="https://docs.google.com/forms/d/e/1FAIpQLSd1r4NwRdpISJkSTpxBq0OfObDEe0E5oq7bdAz8Z6sxIPTWfA/viewform?usp=publish-editor"
           target="_blank"
           className="mt-8 bg-primary text-white px-8 py-3 rounded-md flex items-center gap-2"
         >
