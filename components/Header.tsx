@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ShoppingBag, Store , Truck, CircleDollarSignIcon} from "lucide-react";
+import { ShoppingBag, Store , Truck, CircleDollarSignIcon, PhoneCall, Phone} from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { Badge } from "@/components/ui/badge";
 import { UserButton, SignUpButton, SignInButton, SignedIn , SignedOut} from "@clerk/nextjs";
@@ -42,6 +42,14 @@ export default function Header() {
           <span className="hidden sm:inline">Vendor</span>
         </Link>
         </SignedIn>
+        <Link
+          href="/Support"
+          className="relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+        >
+          <PhoneCall className="h-5 w-5" />
+          <span className="hidden sm:inline">Support</span>
+          
+        </Link>
         <Link
           href="/CartPage"
           className="relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"

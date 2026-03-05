@@ -15,14 +15,13 @@ export async function POST(req: NextRequest) {
 
     // 2. Data Transformation
     // Destructure 'price' and 'image' to handle them specifically
-    const { price, image, ...rest } = body;
+    const { price,...rest } = body;
 
     const formattedProduct = {
       ...rest,
       // Convert the price string to a number
       price: Number(price),
-      // Append the single image URL into the images array
-      images: [image], 
+      // Append the single image URL into the images array 
       quantity: 1
     };
 

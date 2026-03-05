@@ -1,5 +1,5 @@
 "use client";
-
+import React from "react";
 import { CldUploadWidget } from "next-cloudinary";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   Store as StoreIcon,
   ExternalLink,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,8 +47,27 @@ const categories = [
   "Outerwear",
   "Accessories",
   "Shoes",
+  "sold",
 ] as const;
 const genders = ["Men", "Women", "Unisex"] as const;
+
+const deleteButtonStyle: React.CSSProperties = {
+  position: "absolute", // Now TS recognizes this as a valid 'Position' type
+  top: "4px",
+  right: "4px",
+  backgroundColor: "#ef4444",
+  color: "white",
+  borderRadius: "9999px",
+  padding: "4px",
+  boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+  border: "none",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  transition: "background-color 0.2s ease",
+  zIndex: 10,
+};
 
 export default function VendorDashboard() {
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
@@ -69,7 +89,7 @@ export default function VendorDashboard() {
     category: "Tops",
     gender: "Unisex",
     description: "",
-    image: "",
+    images: [] as string[],
     condition: "",
     quantity: "",
   });
@@ -147,7 +167,7 @@ export default function VendorDashboard() {
           category: "Tops",
           gender: "Unisex",
           description: "",
-          image: "",
+          images: [],
           condition: "",
           quantity: "",
         });
@@ -206,8 +226,18 @@ export default function VendorDashboard() {
 
   const filtered = useMemo(() => {
     let result = [...allProducts];
-    if (categoryFilter !== "All")
-      result = result.filter((p) => p.category === categoryFilter);
+    if (categoryFilter === "sold") {
+      result = result.filter((p) => Number(p.quantity) === 0);
+    } 
+    // 2. For "All" and all other categories, hide items with 0 quantity
+    else {
+      result = result.filter((p) => Number(p.quantity) > 0);
+
+      // Further filter by specific category (Tops, Bottoms, etc.) if not "All"
+      if (categoryFilter !== "All") {
+        result = result.filter((p) => p.category === categoryFilter);
+      }
+    }
     if (genderFilter !== "All")
       result = result.filter((p) => p.gender === genderFilter);
     if (sort === "price-low") result.sort((a, b) => a.price - b.price);
@@ -246,26 +276,51 @@ export default function VendorDashboard() {
     );
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", "thriftvault_uploads"); // Your Unsigned Preset
+    toast.loading("Uploading images...");
 
     try {
-      toast.loading("Uploading...");
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        { method: "POST", body: formData },
-      );
-      const data = await res.json();
-      setNewProduct({ ...newProduct, image: data.secure_url }); // Save the URL
+      // Process all selected files
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", "thriftvault_uploads");
+
+        const res = await fetch(
+          `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+          { method: "POST", body: formData },
+        );
+
+        if (!res.ok) throw new Error("Upload failed");
+        const data = await res.json();
+        return data.secure_url;
+      });
+
+      const uploadedUrls = await Promise.all(uploadPromises);
+
+      // Use functional update to append new URLs to the string[] array
+      setNewProduct((prev) => ({
+        ...prev,
+        images: [...prev.images, ...uploadedUrls],
+      }));
+
       toast.dismiss();
-      toast.success("Image uploaded!");
+      toast.success(`${uploadedUrls.length} image(s) uploaded!`);
     } catch (err) {
-      toast.error("Upload failed");
+      toast.dismiss();
+      toast.error("One or more uploads failed");
+      console.error(err);
     }
+  };
+
+  // Helper function to remove an image
+  const removeImage = (indexToRemove: number) => {
+    setNewProduct((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, index) => index !== indexToRemove),
+    }));
   };
 
   const handleFileUploadBanner = async (
@@ -426,16 +481,18 @@ export default function VendorDashboard() {
             {filtered.map((product) => (
               <div key={product.id} className="relative group">
                 <ProductCard product={product} />
-                <div className="absolute top-2 right-2 flex flex-col gap-2 ">
-                  <Button
-                    size="icon"
-                    variant="destructive"
-                    className="h-8 w-8 rounded-full shadow-lg"
-                    onClick={() => handleDelete(product.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                {categoryFilter !== "sold" && (
+                  <div className="absolute top-2 right-2 flex flex-col gap-2">
+                    <Button
+                      size="icon"
+                      variant="destructive"
+                      className="h-8 w-8 rounded-full shadow-lg"
+                      onClick={() => handleDelete(product.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -471,38 +528,64 @@ export default function VendorDashboard() {
           </DialogHeader>
 
           <div className="grid gap-6 py-4">
-            {/* 1. SINGLE IMAGE UPLOAD */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Product Image*</Label>
-              <div className="flex items-center gap-4">
+            {/* 1. MULTIPLE IMAGE UPLOAD */}
+            <div className="space-y-4">
+              <Label className="text-sm font-semibold">
+                Product Images* (Upload multiple)
+              </Label>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                {/* Display existing images with a delete button */}
+                {newProduct.images.map((url, index) => (
+                  <div
+                    key={index}
+                    className="relative group aspect-square rounded-lg border overflow-hidden bg-muted"
+                  >
+                    <img
+                      src={url}
+                      alt={`Product ${index}`}
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      style={deleteButtonStyle}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#dc2626")
+                      } // hover:bg-red-600
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#ef4444")
+                      } // reset to bg-red-500
+                    >
+                      <XCircle style={{ width: "16px", height: "16px" }} />
+                    </button>
+                  </div>
+                ))}
+
+                {/* The Upload Trigger Button */}
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() =>
                     document.getElementById("manual-upload")?.click()
                   }
-                  style={{
-                    width: "100%", // w-full
-                    borderStyle: "solid", // border-dashed
-                    borderWidth: "2px", // border-2
-                    borderColor: "black", // border-green-600
-                    color: "black", // text-green-700
-                    backgroundColor: "transparent", // Default state
-                    transition: "background-color 0.2s", // Smooth hover transition
-                  }}
+                  className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-slate-300 hover:border-green-600 hover:bg-green-50 transition-all"
                 >
-                  <ImagePlus className="mr-2 h-4 w-4" />
-                  {newProduct.image ? "Change Image" : "Upload Main Photo"}
+                  <ImagePlus className="mb-2 h-6 w-6 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Add Photo
+                  </span>
                 </Button>
-                <input
-                  id="manual-upload"
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                />
               </div>
-              {newProduct.image ? "Image Added" : ""}
+
+              <input
+                id="manual-upload"
+                type="file"
+                multiple // Allows selecting multiple files at once
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileUpload}
+              />
             </div>
 
             {/* 2. CORE DETAILS */}
@@ -684,7 +767,7 @@ export default function VendorDashboard() {
                   }}
                 >
                   <ImagePlus className="mr-2 h-4 w-4" />
-                  {newProduct.image ? "Change Image" : "Upload Main Photo"}
+                  {storeUpdate.logoImage ? "Change Image" : "Upload Main Photo"}
                 </Button>
                 <input
                   id="manual-upload"
@@ -694,7 +777,7 @@ export default function VendorDashboard() {
                   onChange={handleFileUploadLogo}
                 />
               </div>
-              {newProduct.image ? "Image Added" : ""}
+              {storeUpdate.logoImage ? "Image Added" : ""}
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold">Banner Image</Label>
@@ -716,7 +799,9 @@ export default function VendorDashboard() {
                   }}
                 >
                   <ImagePlus className="mr-2 h-4 w-4" />
-                  {newProduct.image ? "Change Image" : "Upload Main Photo"}
+                  {storeUpdate.bannerImage
+                    ? "Change Image"
+                    : "Upload Main Photo"}
                 </Button>
                 <input
                   id="manual-upload"
@@ -726,7 +811,7 @@ export default function VendorDashboard() {
                   onChange={handleFileUploadBanner}
                 />
               </div>
-              {newProduct.image ? "Image Added" : ""}
+              {storeUpdate.bannerImage ? "Image Added" : ""}
             </div>
             <div className="space-y-2">
               <Label htmlFor="store-name">Store Name</Label>

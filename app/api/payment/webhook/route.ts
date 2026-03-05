@@ -1,7 +1,8 @@
-// app/api/payment/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Order from '@/models/Order';
+import Product from '@/models/Product';
+import Store from '@/models/Store';
 import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
@@ -9,7 +10,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const authHeader = req.headers.get('Authorization');
 
-    // 1. Verify Webhook security
     const expectedAuth = crypto
       .createHash('sha256')
       .update(`${process.env.PHONEPE_WEBHOOK_USER}:${process.env.PHONEPE_WEBHOOK_PASS}`)
@@ -19,52 +19,56 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Extract payload and event
     const { event, payload } = body;
     
-    // Only process checkout completion events
     if (event === 'checkout.order.completed') {
       await dbConnect();
 
-      // Map PhonePe states to your Order statuses
+      const order = await Order.findOne({ merchantOrderId: payload.merchantOrderId });
+      if (!order || order.status === 'paid') return NextResponse.json({ status: "OK" });
+
       let newStatus: 'paid' | 'failed' | 'cancelled' | 'pending' = 'pending';
+      if (payload.state === 'COMPLETED') newStatus = 'paid';
+      else if (['FAILED', 'USER_CANCEL', 'CANCELLED'].includes(payload.state)) newStatus = 'failed';
 
-      switch (payload.state) {
-        case 'COMPLETED':
-          newStatus = 'paid';
-          break;
-        case 'FAILED':
-          newStatus = 'failed';
-          break;
-        case 'USER_CANCEL':
-        case 'CANCELLED':
-          newStatus = 'cancelled';
-          break;
-        default:
-          newStatus = 'pending';
-      }
+      // 1. ATOMIC INVENTORY REDUCTION
+      if (newStatus === 'paid') {
+  // 1. Atomic Product Reduction
+  const reductionPromises = order.items.map(async (item: any) => {
+    return Product.findOneAndUpdate(
+      { _id: item.productId, quantity: { $gt: 0 } }, 
+      { $inc: { quantity: -1 } },
+      { returnDocument: 'after' }
+    );
+  });
 
-      // Update the order in MongoDB using the unique merchantOrderId
-      const updatedOrder = await Order.findOneAndUpdate(
-        { merchantOrderId: payload.merchantOrderId },
-        { 
-          status: newStatus,
-          // Store PhonePe's internal ID if it's provided in the payload
-          paymentIntentId: payload.transactionId || payload.orderId 
-        },
-        { new: true }
-      );
+  const results = await Promise.all(reductionPromises);
 
-      if (!updatedOrder) {
-        console.warn(`Webhook received for unknown Order: ${payload.merchantOrderId}`);
-      }
+  // 2. Atomic Store Item Count Reduction
+  // We reduce the 'availableItems' count by the number of unique items successfully processed
+  const successfulReductions = results.filter(res => res !== null).length;
+
+  if (successfulReductions > 0) {
+    await Store.findOneAndUpdate(
+      { _id: order.storeId }, 
+      { $inc: { availableItems: -successfulReductions } } // Decrement by the number of sold items
+    );
+  }
+
+  // 3. Race Condition Check
+  if (results.some(res => res === null)) {
+    console.error(`RACE CONDITION: Order ${order.merchantOrderId} paid for sold-out item.`);
+  }
+}
+
+      order.status = newStatus;
+      order.paymentIntentId = payload.transactionId || payload.orderId;
+      await order.save();
     }
 
-    // 3. Always acknowledge with 200 OK so PhonePe stops retrying
     return NextResponse.json({ status: "OK" });
   } catch (error) {
-    console.error("Webhook Processing Error:", error);
-    // Returning 200 even on error can be a strategy to stop retries if the payload is malformed
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
+    console.error("Webhook Error:", error);
+    return NextResponse.json({ status: "OK" });
   }
 }

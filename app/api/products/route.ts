@@ -9,7 +9,10 @@ export async function GET(request: NextRequest) { // Use NextRequest
     // Use request.nextUrl for better compatibility with Vercel's edge runtime
     const storeId = request.nextUrl.searchParams.get('storeId');
 
-    const filter = storeId ? { storeId } : {};
+    const filter = {
+  ...(storeId ? { storeId } : {}),
+  quantity: { $gt: 0 } // Only include items where quantity is greater than 0
+};
     const productsData = await Product.find(filter).sort({ createdAt: -1 }).lean();
 
     const products = productsData.map((prod: any) => ({

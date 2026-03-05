@@ -3,20 +3,19 @@
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState, Suspense } from "react";
-import { CheckCircle, Package, Loader2, Clock } from "lucide-react";
+import { CheckCircle, Package, Loader2, Clock, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Order } from "@/types";
 import { useCart } from "@/context/CartContext";
+import { toast } from "sonner";
 
 function ConfirmationContent() {
   const searchParams = useSearchParams();
   const { clearCart } = useCart();
-  
-  // PhonePe uses merchantOrderId passed in your initiate route
   const merchantOrderId = searchParams.get("orderId");
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [status, setStatus] = useState<"loading" | "success" | "pending" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "success" | "pending" | "error" | "conflict">("loading");
 
   useEffect(() => {
     async function verifyAndFetchOrder() {
@@ -26,23 +25,26 @@ function ConfirmationContent() {
       }
 
       try {
-        // Call your new status API
         const response = await fetch(`/api/payment/status?merchantOrderId=${merchantOrderId}`);
         const data = await response.json();
         
-        // Trust root-level 'state' per PhonePe docs
         if (data.state === "COMPLETED") {
-          setOrder(data); // data contains orderDetails from the Status API
+          setOrder(data);
           clearCart();
-          setStatus("success");
+          
+          // Check if the items were actually secured in DB
+          if (data.inventoryConflict) {
+             setStatus("conflict");
+             toast.warning("Inventory conflict detected.");
+          } else {
+             setStatus("success");
+          }
         } else if (data.state === "PENDING") {
-          // Case where webhook hasn't hit yet
           setStatus("pending");
         } else {
           setStatus("error");
         }
       } catch (error) {
-        console.error("Confirmation Error:", error);
         setStatus("error");
       }
     }
@@ -70,6 +72,20 @@ function ConfirmationContent() {
           PhonePe is confirming your transaction. This usually takes a few seconds.
         </p>
         <Button onClick={() => window.location.reload()}>Refresh Status</Button>
+      </div>
+    );
+  }
+
+  if (status === "conflict") {
+    return (
+      <div className="container-page flex min-h-[60vh] flex-col items-center justify-center text-center gap-4">
+        <AlertTriangle className="h-16 w-16 text-orange-500" />
+        <h1 className="text-2xl font-bold">Payment Received, but Item Sold Out!</h1>
+        <p className="text-muted-foreground max-w-sm">
+          A race condition occurred. Another student secured this item a millisecond before you. 
+          Please contact support for an immediate manual refund.
+        </p>
+        <Link href="/support"><Button variant="outline">Contact Support</Button></Link>
       </div>
     );
   }
@@ -136,11 +152,7 @@ function ConfirmationContent() {
 
 export default function ConfirmationPage() {
   return (
-    <Suspense fallback={
-      <div className="container-page flex min-h-[60vh] flex-col items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    }>
+    <Suspense fallback={<div className="container-page flex items-center justify-center"><Loader2 className="animate-spin" /></div>}>
       <ConfirmationContent />
     </Suspense>
   );
