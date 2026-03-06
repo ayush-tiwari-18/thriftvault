@@ -6,6 +6,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/context/CartContext";
 import StoreConflictModal from "@/components/StoreConflictModal";
+import Footer from "@/components/Footer";
 import Script from "next/script"; // Import the Script component
 import "./globals.css";
 
@@ -42,6 +43,7 @@ export default function RootLayout({
           <TooltipProvider>
             <CartProvider>
               <main className="min-h-screen">{children}</main>
+              <Footer/>
               
               {/* UI Overlay Components */}
               <Toaster />
