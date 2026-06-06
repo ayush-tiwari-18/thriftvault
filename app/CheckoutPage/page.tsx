@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { CheckoutFormData } from '@/types';
-import Script from 'next/script'; // Import Next.js Script for SDK loading
+import Script from 'next/script'; // kept for compatibility if needed
+import React from 'react';
 import { useAuth } from '@clerk/nextjs';
 
 export default function CheckoutPage() {
@@ -50,61 +51,84 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
-      // 1. Initiate PhonePe Payment on the backend
       const merchantOrderId = `TV_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      const response = await fetch('/api/payment/initiate', {
+
+      // Create order on backend (amount in paise)
+      const amountPaise = Math.round(getTotal() * 100);
+      const res = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: userId, // CRITICAL: Add this line
-          amount: getTotal(),
-          merchantOrderId: merchantOrderId,
-          customerDetails: form,
-          items: cart.items, // Ensure you send items for the DB record
-          storeId: cart.storeId,
-          storeName: cart.storeName,
-        }),
+        body: JSON.stringify({ amount: amountPaise }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.redirectUrl) {
-        throw new Error(data.error || "Failed to initialize payment session");
+      const createData = await res.json();
+      if (!res.ok) {
+        throw new Error(createData?.error || 'Failed to create order');
       }
 
-      // 2. Invoke PhonePe IFrame PayPage
-      // @ts-ignore - PhonePe SDK attached to window
-      if (window.PhonePeCheckout && window.PhonePeCheckout.transact) {
-        // @ts-ignore
-        window.PhonePeCheckout.transact({
-          tokenUrl: data.redirectUrl,
-          callback: (response: string) => {
-            if (response === 'CONCLUDED') {
-              // Redirect to status check
-              router.push(`/ConfirmationPage?orderId=${merchantOrderId}`);
-            } else if (response === 'USER_CANCEL') {
-              toast.error("Payment cancelled. You can try again.");
-              setLoading(false);
-            }
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: createData.amount,
+        currency: createData.currency,
+        name: 'ThriftVault',
+        order_id: createData.order_id,
+        handler: async function (response: any) {
+          // Send to backend for verification
+          const verify = await fetch('/api/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(response),
+          });
+          const v = await verify.json();
+          if (verify.ok && v.success) {
+            // Redirect to confirmation (no DB persistence yet)
+            router.push(`/ConfirmationPage?orderId=${merchantOrderId}&success=true`);
+          } else {
+            toast.error(v?.error || 'Payment verification failed');
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            toast.error('Payment popup closed');
           },
-          type: "IFRAME", // Recommended IFrame mode
-        });
-      }
+        },
+      } as any;
+
+      const ok = await loadRazorpayScript();
+      if (!ok) throw new Error('Failed to load Razorpay SDK');
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on && rzp.on('payment.failed', (resp: any) => {
+        toast.error('Payment failed: ' + (resp?.error?.description || 'Unknown'));
+      });
+      rzp.open();
 
     } catch (err: any) {
-      console.error("PhonePe Error:", err);
-      toast.error(err.message || "Could not connect to PhonePe.");
+      console.error('Payment Error:', err);
+      toast.error(err?.message || 'Could not initiate payment.');
       setLoading(false);
     }
   };
+
+  // Helper for loading Razorpay SDK dynamically
+  function loadRazorpayScript(): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (typeof window === 'undefined') return resolve(false);
+      if ((window as any).Razorpay) return resolve(true);
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    });
+  }
 
   if (getItemCount() === 0) return null;
 
   return (
     <div className="container-page animate-fade-in py-8">
-      {/* Load PhonePe SDK Script */}
+      {/* Load Razorpay SDK Script (fallback) */}
       <Script 
-        src="https://mercury.phonepe.com/web/bundle/checkout.js" 
+        src="https://checkout.razorpay.com/v1/checkout.js" 
         onLoad={() => setIsSdkLoaded(true)}
       />
 
@@ -160,13 +184,13 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* PhonePe Payment Info Section */}
+          {/* Payment Info Section */}
           <div className="rounded-xl border bg-card p-6 shadow-sm">
             <h2 className="font-heading text-xl font-bold text-foreground mb-4">Payment Method</h2>
-            <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-primary">
-              <CreditCard className="h-5 w-5" />
-              <span className="font-medium">Secure Payment via PhonePe (UPI, Cards, NetBanking).</span>
-            </div>
+              <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-primary">
+                <CreditCard className="h-5 w-5" />
+                <span className="font-medium">Secure Payment via Razorpay (UPI, Cards, NetBanking).</span>
+              </div>
           </div>
         </div>
 
@@ -208,7 +232,7 @@ export default function CheckoutPage() {
               )}
             </Button>
             <p className="text-[10px] text-center text-muted-foreground mt-4 uppercase tracking-widest font-bold">
-              Securely encrypted by PhonePe
+              Securely encrypted by Razorpay
             </p>
           </div>
         </aside>

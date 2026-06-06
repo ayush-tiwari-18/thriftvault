@@ -218,7 +218,7 @@ export default function OrderCard({ order }: OrderCardProps) {
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground flex items-center gap-2">
-                      <CreditCard className="h-3.5 w-3.5" /> PhonePe TransactionId:
+                      <CreditCard className="h-3.5 w-3.5" /> Payment Transaction ID:
                     </span>
                     <span className="font-mono text-muted-foreground select-all">
                       {order.paymentIntentId || "Not generated"}

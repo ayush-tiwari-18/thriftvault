@@ -18,38 +18,17 @@ function ConfirmationContent() {
   const [status, setStatus] = useState<"loading" | "success" | "pending" | "error" | "conflict">("loading");
 
   useEffect(() => {
-    async function verifyAndFetchOrder() {
-      if (!merchantOrderId) {
-        setStatus("error");
-        return;
-      }
-
-      try {
-        const response = await fetch(`/api/payment/status?merchantOrderId=${merchantOrderId}`);
-        const data = await response.json();
-        
-        if (data.state === "COMPLETED") {
-          setOrder(data);
-          clearCart();
-          
-          // Check if the items were actually secured in DB
-          if (data.inventoryConflict) {
-             setStatus("conflict");
-             toast.warning("Inventory conflict detected.");
-          } else {
-             setStatus("success");
-          }
-        } else if (data.state === "PENDING") {
-          setStatus("pending");
-        } else {
-          setStatus("error");
-        }
-      } catch (error) {
-        setStatus("error");
-      }
+    // After switching from PhonePe to Razorpay there is no automatic status fetch here.
+    // Use the `success` query parameter returned after client-side verification.
+    const success = searchParams.get('success');
+    if (success === 'true') {
+      clearCart();
+      setStatus('success');
+    } else if (merchantOrderId) {
+      setStatus('pending');
+    } else {
+      setStatus('error');
     }
-
-    verifyAndFetchOrder();
   }, [merchantOrderId, clearCart]);
 
   // UI STATE: LOADING
@@ -57,7 +36,7 @@ function ConfirmationContent() {
     return (
       <div className="container-page flex min-h-[60vh] flex-col items-center justify-center gap-3">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse font-medium">Verifying your payment with PhonePe...</p>
+        <p className="text-muted-foreground animate-pulse font-medium">Verifying your payment...</p>
       </div>
     );
   }
@@ -69,7 +48,7 @@ function ConfirmationContent() {
         <Clock className="h-16 w-16 text-yellow-500 animate-pulse" />
         <h1 className="text-2xl font-bold">Payment is Processing</h1>
         <p className="text-muted-foreground max-w-xs">
-          PhonePe is confirming your transaction. This usually takes a few seconds.
+          Your payment gateway is confirming your transaction. This usually takes a few seconds.
         </p>
         <Button onClick={() => window.location.reload()}>Refresh Status</Button>
       </div>
@@ -135,7 +114,7 @@ function ConfirmationContent() {
               <span>Rs. {(order.totalAmount).toFixed(2)}</span>
             </div>
             <p className="mt-1 text-xs font-medium text-emerald-600">
-              ✓ Verified via PhonePe Gateway
+              ✓ Payment verified
             </p>
           </div>
         )}

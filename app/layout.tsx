@@ -34,11 +34,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          {/* PhonePe Checkout SDK - Required for the IFrame and transact function */}
-          <Script 
-            src="https://mercury.phonepe.com/web/bundle/checkout.js" 
-            strategy="beforeInteractive" // Ensures SDK is ready for CheckoutPage
-          />
+          {/* Razorpay SDK is loaded on-demand in checkout pages */}
 
           <TooltipProvider>
             <CartProvider>

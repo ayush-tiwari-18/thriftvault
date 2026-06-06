@@ -24,7 +24,7 @@ const Footer = () => {
             </h2>
             <p className="text-muted-foreground text-sm max-w-xs leading-relaxed">
               Empowering sustainable fashion at IIT Ropar. Secure payments 
-              powered by PhonePe.
+              powered by Razorpay.
             </p>
           </div>
 

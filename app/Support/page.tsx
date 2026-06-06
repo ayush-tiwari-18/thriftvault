@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Phone, MessageSquare, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -47,6 +47,111 @@ export default function SupportPage() {
           </div>
         ))}
       </div>
+
+      <div className="mt-8 p-6 border rounded-xl">
+        <h2 className="text-xl font-semibold mb-2">Test Payment (Razorpay)</h2>
+        <PaymentWidget />
+      </div>
+    </div>
+  );
+}
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") return resolve(false);
+    if ((window as any).Razorpay) return resolve(true);
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+}
+
+function PaymentWidget() {
+  const [amount, setAmount] = useState<number>(100);
+  const [loading, setLoading] = useState(false);
+
+  async function handlePay() {
+    setLoading(true);
+    const ok = await loadRazorpayScript();
+    if (!ok) {
+      alert("Failed to load Razorpay SDK");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data?.error || "Failed to create order");
+        setLoading(false);
+        return;
+      }
+
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: data.amount,
+        currency: data.currency,
+        name: "ThriftVault",
+        order_id: data.order_id,
+        handler: async function (response: any) {
+          // Send to backend for verification
+          const verify = await fetch("/api/verify-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(response),
+          });
+          const v = await verify.json();
+          if (verify.ok && v.success) {
+            alert("Payment verified successfully");
+          } else {
+            alert(v?.error || "Payment verification failed");
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            alert("Payment popup closed");
+          },
+        },
+      } as any;
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on && rzp.on("payment.failed", function (resp: any) {
+        alert("Payment failed: " + (resp?.error?.description || "Unknown"));
+      });
+      rzp.open();
+    } catch (err: any) {
+      alert(err?.message || "Payment error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-full flex items-center gap-2">
+        <input
+          type="number"
+          min={100}
+          value={amount}
+          onChange={(e) => setAmount(Number(e.target.value))}
+          className="flex-1 px-3 py-2 border rounded"
+        />
+        <span className="text-sm">paise</span>
+      </div>
+      <button
+        className="px-4 py-2 bg-blue-600 text-white rounded"
+        onClick={handlePay}
+        disabled={loading}
+      >
+        {loading ? "Processing…" : "Pay with Razorpay"}
+      </button>
     </div>
   );
 }

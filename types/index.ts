@@ -49,10 +49,10 @@ export interface Order {
   customerPhone: string;
   shippingAddress: string;
   totalAmount: number;
-  // Use paymentIntentId for PhonePe's ID and merchantOrderId for yours
+  // Use `paymentIntentId` for the payment gateway's transaction ID and `merchantOrderId` for your order id
   paymentIntentId: string; 
   merchantOrderId: string;
-  // Added 'failed' and 'cancelled' to handle PhonePe webhook responses
+  // Added 'failed' and 'cancelled' to handle webhook responses from payment gateways
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'failed' | 'cancelled';
   items: CartItem[];
   createdAt: string;
