@@ -18,17 +18,33 @@ function ConfirmationContent() {
   const [status, setStatus] = useState<"loading" | "success" | "pending" | "error" | "conflict">("loading");
 
   useEffect(() => {
-    // After switching from PhonePe to Razorpay there is no automatic status fetch here.
-    // Use the `success` query parameter returned after client-side verification.
+    // After switching from PhonePe to Razorpay fetch the order by id
     const success = searchParams.get('success');
-    if (success === 'true') {
-      clearCart();
-      setStatus('success');
-    } else if (merchantOrderId) {
-      setStatus('pending');
-    } else {
-      setStatus('error');
+    async function fetchOrder() {
+      if (!merchantOrderId) {
+        setStatus('error');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/orders');
+        if (!res.ok) throw new Error('Failed to fetch orders');
+        const orders: any[] = await res.json();
+        const found = orders.find(o => String(o._id || o.id) === String(merchantOrderId));
+        if (found) setOrder(found);
+      } catch (e) {
+        console.warn('Failed to load order:', e);
+      }
+
+      if (success === 'true') {
+        clearCart();
+        setStatus('success');
+      } else {
+        setStatus('pending');
+      }
     }
+
+    fetchOrder();
   }, [merchantOrderId, clearCart]);
 
   // UI STATE: LOADING

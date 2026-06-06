@@ -22,6 +22,12 @@ export async function POST(req: Request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const body = await req.json();
+    const customerName = body?.customerName || '';
+    const customerEmail = body?.customerEmail || '';
+    const customerPhone = body?.customerPhone || '';
+    const shippingAddress = body?.shippingAddress || '';
+
     await dbConnect();
 
     // Recompute authoritative cart from server-side persisted cart
@@ -44,6 +50,10 @@ export async function POST(req: Request) {
       storeName: cart.storeName || "",
       items: cart.items,
       totalAmount,
+      customerName,
+      customerEmail,
+      customerPhone,
+      shippingAddress,
       status: 'pending',
     });
 

@@ -51,14 +51,17 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
-      const merchantOrderId = `TV_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-
-      // Create order on backend (amount in paise)
-      const amountPaise = Math.round(getTotal() * 100);
+      // Create order on backend — include shipping/customer details
+      const shippingAddress = `${form.address}, ${form.city}, ${form.state} ${form.zipCode}`;
       const res = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: amountPaise }),
+        body: JSON.stringify({
+          customerName: form.fullName,
+          customerEmail: form.email,
+          customerPhone: form.phone,
+          shippingAddress,
+        }),
       });
       const createData = await res.json();
       if (!res.ok) {
@@ -80,8 +83,9 @@ export default function CheckoutPage() {
           });
           const v = await verify.json();
           if (verify.ok && v.success) {
-            // Redirect to confirmation (no DB persistence yet)
-            router.push(`/ConfirmationPage?orderId=${merchantOrderId}&success=true`);
+            // Redirect to confirmation using server-side order id
+            const remoteOrderId = v?.orderId || createData?.localOrderId;
+            router.push(`/ConfirmationPage?orderId=${remoteOrderId}&success=true`);
           } else {
             toast.error(v?.error || 'Payment verification failed');
           }
